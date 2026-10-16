@@ -1,0 +1,26 @@
+[
+  {
+    "object": "person",
+    "track_id": 1,
+    "frame": 18,
+    "video_time_sec": 0.75,
+    "simulated_clock": "23:30:00",
+    "type": "INTRUSION_OFF_HOURS"
+  },
+  {
+    "object": "person",
+    "track_id": 3,
+    "frame": 74,
+    "video_time_sec": 3.08,
+    "simulated_clock": "23:30:03",
+    "type": "INTRUSION_OFF_HOURS"
+  },
+  {
+    "object": "person",
+    "track_id": 7,
+    "frame": 356,
+    "video_time_sec": 14.83,
+    "simulated_clock": "23:30:14",
+    "type": "INTRUSION_OFF_HOURS"
+  }
+]
