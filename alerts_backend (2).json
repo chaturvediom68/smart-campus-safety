@@ -1,0 +1,44 @@
+[
+  {
+    "alert_id": "ALT-20261016-001",
+    "camera_id": "cam_01",
+    "zone": "restricted_zone_1",
+    "event_type": "INTRUSION_OFF_HOURS",
+    "object_class": "person",
+    "track_id": 1,
+    "timestamp": "23:30:00",
+    "video_time_sec": 0.75,
+    "severity": "HIGH",
+    "image_path": "evidence/person_id1_f18.jpg",
+    "clip_path": "evidence/person_id1_f18.mp4",
+    "status": "NEW"
+  },
+  {
+    "alert_id": "ALT-20261016-002",
+    "camera_id": "cam_01",
+    "zone": "restricted_zone_1",
+    "event_type": "INTRUSION_OFF_HOURS",
+    "object_class": "person",
+    "track_id": 3,
+    "timestamp": "23:30:03",
+    "video_time_sec": 3.08,
+    "severity": "HIGH",
+    "image_path": "evidence/person_id3_f74.jpg",
+    "clip_path": "evidence/person_id3_f74.mp4",
+    "status": "NEW"
+  },
+  {
+    "alert_id": "ALT-20261016-003",
+    "camera_id": "cam_01",
+    "zone": "restricted_zone_1",
+    "event_type": "INTRUSION_OFF_HOURS",
+    "object_class": "person",
+    "track_id": 7,
+    "timestamp": "23:30:14",
+    "video_time_sec": 14.83,
+    "severity": "HIGH",
+    "image_path": "evidence/person_id7_f356.jpg",
+    "clip_path": "evidence/person_id7_f356.mp4",
+    "status": "NEW"
+  }
+]
