@@ -1,12 +1,16 @@
 """Central Smart Campus Safety API (v2)."""
 from contextlib import asynccontextmanager
-from typing import Optional
+from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from .event_store import create_event, init_db, list_cameras, list_events, update_event
+from .event_store import (
+    create_event, get_geofence_config, init_db, list_cameras,
+    list_events, save_geofence_config, update_event,
+)
 from .model_registry import registry
 from .pipeline import decode_image, process_frame
 
@@ -20,10 +24,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Smart Campus Safety Central Backend",
-    version="2.0.0",
-    description="Central API for available campus safety AI models and event management.",
-    lifespan=lifespan,
+    version="2.1.0",
+    description="Central API for campus safety AI models, rule-based geofencing and event management.",
 )
+app.router.lifespan_context = lifespan
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -47,9 +51,47 @@ class StatusUpdate(BaseModel):
     status: str
 
 
+class GeofenceConfig(BaseModel):
+    enabled: bool = False
+    polygon: list[list[float]] = Field(default_factory=lambda: [
+        [0.25, 0.25], [0.75, 0.25], [0.75, 0.85], [0.25, 0.85]
+    ])
+    restricted_start: str = "18:00"
+    restricted_end: str = "23:59"
+    timezone: str = "Asia/Kolkata"
+
+    @field_validator("polygon")
+    @classmethod
+    def validate_polygon(cls, value):
+        if len(value) < 3:
+            raise ValueError("Polygon must contain at least three [x, y] points.")
+        for point in value:
+            if len(point) != 2 or not all(0.0 <= coordinate <= 1.0 for coordinate in point):
+                raise ValueError("Every polygon point must contain normalized x,y values between 0 and 1.")
+        return value
+
+    @field_validator("restricted_start", "restricted_end")
+    @classmethod
+    def validate_time(cls, value):
+        try:
+            datetime.strptime(value, "%H:%M")
+        except ValueError as exc:
+            raise ValueError("Time must use 24-hour HH:MM format.") from exc
+        return value
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value):
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError("Unknown timezone. Example: Asia/Kolkata") from exc
+        return value
+
+
 @app.get("/")
 def root():
-    return {"service": "Smart Campus Safety Central Backend", "version": "2.0.0", "docs": "/docs"}
+    return {"service": "Smart Campus Safety Central Backend", "version": "2.1.0", "docs": "/docs"}
 
 
 @app.get("/health")
@@ -90,11 +132,19 @@ def cameras():
     return list_cameras()
 
 
+@app.get("/geofence/config")
+def read_geofence_config():
+    return get_geofence_config()
+
+
+@app.put("/geofence/config")
+def update_geofence_config(payload: GeofenceConfig):
+    config = payload.model_dump()
+    return save_geofence_config(config)
+
+
 @app.post("/process/image")
-async def process_image(
-    file: UploadFile = File(...),
-    camera: str = Form("Camera 1"),
-):
+async def process_image(file: UploadFile = File(...), camera: str = Form("Camera 1")):
     contents = await file.read()
     frame = decode_image(contents)
     if frame is None:
@@ -103,10 +153,7 @@ async def process_image(
 
 
 @app.post("/process/frame")
-async def process_frame_endpoint(
-    file: UploadFile = File(...),
-    camera: str = Form("Camera 1"),
-):
+async def process_frame_endpoint(file: UploadFile = File(...), camera: str = Form("Camera 1")):
     """Alias retained for simple camera/frame integrations."""
     return await process_image(file, camera)
 
