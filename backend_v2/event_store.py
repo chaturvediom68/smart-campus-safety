@@ -1,4 +1,5 @@
-"""SQLite event storage shared by every detection module."""
+"""SQLite event storage and persistent geofence configuration."""
+import json
 import os
 import sqlite3
 from pathlib import Path
@@ -8,6 +9,14 @@ ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = Path(os.getenv("DATABASE_PATH", str(ROOT / "backend_v2" / "campus_safety.db")))
 if not DB_PATH.is_absolute():
     DB_PATH = ROOT / DB_PATH
+
+DEFAULT_GEOFENCE = {
+    "enabled": False,
+    "polygon": [[0.25, 0.25], [0.75, 0.25], [0.75, 0.85], [0.25, 0.85]],
+    "restricted_start": "18:00",
+    "restricted_end": "23:59",
+    "timezone": "Asia/Kolkata",
+}
 
 
 def connect():
@@ -41,8 +50,37 @@ def init_db():
                 status TEXT NOT NULL DEFAULT 'offline'
             )
         """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS app_settings (
+                setting_key TEXT PRIMARY KEY,
+                setting_value TEXT NOT NULL
+            )
+        """)
         db.execute("INSERT OR IGNORE INTO cameras(name, location, status) VALUES ('Camera 1', 'Main Gate', 'offline')")
         db.execute("INSERT OR IGNORE INTO cameras(name, location, status) VALUES ('Camera 2', 'Campus Area', 'offline')")
+        db.execute(
+            "INSERT OR IGNORE INTO app_settings(setting_key, setting_value) VALUES ('geofence', ?)",
+            (json.dumps(DEFAULT_GEOFENCE),),
+        )
+
+
+def get_geofence_config():
+    with connect() as db:
+        row = db.execute(
+            "SELECT setting_value FROM app_settings WHERE setting_key='geofence'"
+        ).fetchone()
+    return json.loads(row["setting_value"]) if row else dict(DEFAULT_GEOFENCE)
+
+
+def save_geofence_config(config: dict):
+    value = json.dumps(config)
+    with connect() as db:
+        db.execute(
+            """INSERT INTO app_settings(setting_key, setting_value) VALUES ('geofence', ?)
+               ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value""",
+            (value,),
+        )
+    return config
 
 
 def list_events(limit: int = 200):
