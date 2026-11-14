@@ -1,4 +1,4 @@
-"""One frame enters here; every available model contributes normalized events."""
+"""One frame enters here; available models and the rule-based geofence contribute events."""
 import importlib.util
 import json
 import os
@@ -8,6 +8,7 @@ from pathlib import Path
 import cv2
 
 from .event_store import create_event
+from .geofence import detect_and_alert
 from .model_registry import ROOT, registry
 
 COOLDOWN = int(os.getenv("EVENT_COOLDOWN_SECONDS", "30"))
@@ -44,7 +45,6 @@ def _anpr_detect(frame):
         try:
             return _anpr_module.detect(frame)
         except Exception:
-            # Fall back to the shared registry if the legacy adapter fails.
             _anpr_module = None
     vehicles = registry.predict("anpr_vehicle", frame)
     plates = registry.predict("anpr_plate", frame)
@@ -60,28 +60,37 @@ def process_frame(frame, camera: str = "Camera 1"):
         name = label["label"]
         if "no_helmet" in name or "without_helmet" in name or "nohelmet" in name:
             event = _emit("Helmet", camera, "no_helmet", "high", label)
-            if event: generated.append(event)
+            if event:
+                generated.append(event)
 
     for label in registry.predict("triple_riding", frame):
         name = label["label"]
         if "triple" in name or "three" in name:
             event = _emit("Helmet + Triple Riding", camera, "triple_riding", "high", label)
-            if event: generated.append(event)
+            if event:
+                generated.append(event)
 
     anpr = _anpr_detect(frame)
-    for vehicle in anpr.get("vehicles", []):
+    vehicles = anpr.get("vehicles", [])
+    for vehicle in vehicles:
         event = _emit("Vehicle + ANPR", camera, "vehicle_detected", "low", vehicle)
-        if event: generated.append(event)
+        if event:
+            generated.append(event)
 
     for plate in anpr.get("plates", []):
         event = _emit("Vehicle + ANPR", camera, "number_plate_detected", "low", plate)
-        if event: generated.append(event)
+        if event:
+            generated.append(event)
+
+    geofence_result, geofence_events = detect_and_alert(frame, camera, vehicles, _emit)
+    generated.extend(geofence_events)
 
     return {
         "camera": camera,
         "events_created": generated,
+        "geofencing": geofence_result,
         "models": registry.status,
-        "note": "Only models with available weights are executed. Missing modules are not simulated.",
+        "note": "Geofencing uses OpenCV HOG for people, the existing ANPR detector for vehicles, and a configurable polygon/time rule. No separate geofencing weights are required.",
     }
 
 
