@@ -1,4 +1,4 @@
-"""Loads only model files that are actually present in the repository."""
+"""Loads model files present in the repository and reports algorithmic modules."""
 import os
 from pathlib import Path
 from typing import Any
@@ -35,7 +35,11 @@ class ModelRegistry:
         self._load_yolo("anpr_vehicle", "ANPR_VEHICLE_MODEL_PATH", "anpr/weights/vehicle_yolov8n.pt")
         self._load_yolo("anpr_plate", "ANPR_PLATE_MODEL_PATH", "anpr/weights/plate_best.pt")
         self.status["weapon"] = {"status": "unavailable", "reason": "Weapon model weights are not present in the repository."}
-        self.status["geofencing"] = {"status": "unavailable", "reason": "Geofencing model weights and an importable inference module are not configured."}
+        self.status["geofencing"] = {
+            "status": "ready",
+            "method": "OpenCV HOG person detection + existing ANPR vehicle detection + polygon/time rules",
+            "separate_weights_required": "no",
+        }
 
     def predict(self, key: str, frame):
         model = self.models.get(key)
