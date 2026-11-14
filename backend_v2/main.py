@@ -26,8 +26,8 @@ app = FastAPI(
     title="Smart Campus Safety Central Backend",
     version="2.1.0",
     description="Central API for campus safety AI models, rule-based geofencing and event management.",
+    lifespan=lifespan,
 )
-app.router.lifespan_context = lifespan
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
