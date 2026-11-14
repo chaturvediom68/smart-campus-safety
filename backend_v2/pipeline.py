@@ -12,6 +12,8 @@ from .model_registry import ROOT, registry
 
 COOLDOWN = int(os.getenv("EVENT_COOLDOWN_SECONDS", "30"))
 _last_seen: dict[str, float] = {}
+_anpr_module = None
+_anpr_import_attempted = False
 
 
 def _emit(module: str, camera: str, event_type: str, severity: str, details: dict, plate: str = ""):
@@ -27,19 +29,26 @@ def _emit(module: str, camera: str, event_type: str, severity: str, details: dic
 
 
 def _anpr_detect(frame):
+    global _anpr_module, _anpr_import_attempted
     inference_path = ROOT / "anpr" / "inference.py"
-    if not inference_path.exists():
-        return {"vehicles": [], "plates": []}
-    try:
-        spec = importlib.util.spec_from_file_location("campus_anpr_inference", inference_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module.detect(frame)
-    except Exception:
-        # Fallback to the same YOLO weights through the shared registry.
-        vehicles = registry.predict("anpr_vehicle", frame)
-        plates = registry.predict("anpr_plate", frame)
-        return {"vehicles": vehicles, "plates": plates}
+    if inference_path.exists() and not _anpr_import_attempted:
+        _anpr_import_attempted = True
+        try:
+            spec = importlib.util.spec_from_file_location("campus_anpr_inference", inference_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            _anpr_module = module
+        except Exception:
+            _anpr_module = None
+    if _anpr_module is not None:
+        try:
+            return _anpr_module.detect(frame)
+        except Exception:
+            # Fall back to the shared registry if the legacy adapter fails.
+            _anpr_module = None
+    vehicles = registry.predict("anpr_vehicle", frame)
+    plates = registry.predict("anpr_plate", frame)
+    return {"vehicles": vehicles, "plates": plates}
 
 
 def process_frame(frame, camera: str = "Camera 1"):
