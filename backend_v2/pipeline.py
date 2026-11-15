@@ -56,7 +56,7 @@ def process_frame(frame, camera: str = "Camera 1"):
 
     generated = []
 
-    # Weapon detection: every detected weapon class becomes a high-severity event.
+    # Weapon detections are reported separately from seatbelt violations.
     for weapon in registry.predict("weapon", frame):
         event = _emit("Weapon Detection", camera, "weapon_detected", "high", weapon)
         if event:
@@ -73,6 +73,13 @@ def process_frame(frame, camera: str = "Camera 1"):
         name = label["label"]
         if "triple" in name or "three" in name:
             event = _emit("Helmet + Triple Riding", camera, "triple_riding", "high", label)
+            if event:
+                generated.append(event)
+
+    for label in registry.predict("seatbelt", frame):
+        name = label["label"]
+        if "no_seatbelt" in name or "without_seatbelt" in name or "no_seat_belt" in name:
+            event = _emit("Seatbelt Detection", camera, "no_seatbelt", "high", label)
             if event:
                 generated.append(event)
 
@@ -96,7 +103,7 @@ def process_frame(frame, camera: str = "Camera 1"):
         "events_created": generated,
         "geofencing": geofence_result,
         "models": registry.status,
-        "note": "Weapon, helmet, triple-riding, vehicle and plate models run through the shared YOLO registry. Geofencing uses OpenCV HOG person detection, the ANPR vehicle detector and polygon/time rules.",
+        "note": "Available YOLO models (including seatbelt) run through the shared registry. Geofencing uses OpenCV HOG person detection, the ANPR vehicle detector and polygon/time rules.",
     }
 
 
