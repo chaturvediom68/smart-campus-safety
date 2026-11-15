@@ -1,4 +1,4 @@
-"""Loads model files present in the repository and reports algorithmic modules."""
+"""Loads all available YOLO weights and reports algorithmic modules."""
 import os
 from pathlib import Path
 from typing import Any
@@ -20,21 +20,29 @@ class ModelRegistry:
     def _load_yolo(self, key: str, env_name: str, default_path: str):
         path = resolve_path(env_name, default_path)
         if not path.exists():
-            self.status[key] = {"status": "unavailable", "reason": f"Weight file not found: {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}"}
+            display_path = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
+            self.status[key] = {"status": "unavailable", "reason": f"Weight file not found: {display_path}"}
             return
         try:
             from ultralytics import YOLO
             self.models[key] = YOLO(str(path))
-            self.status[key] = {"status": "ready", "weight": str(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path)}
+            display_path = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
+            self.status[key] = {
+                "status": "ready",
+                "weight": str(display_path),
+                "classes": ", ".join(str(v) for v in self.models[key].names.values()),
+            }
         except Exception as exc:
             self.status[key] = {"status": "error", "reason": str(exc)}
 
     def load_all(self):
+        self.models.clear()
+        self.status.clear()
         self._load_yolo("helmet", "HELMET_MODEL_PATH", "MODEL/weights/helmet_best.pt")
         self._load_yolo("triple_riding", "TRIPLE_RIDING_MODEL_PATH", "MODEL/weights/tripleriding_best.pt")
         self._load_yolo("anpr_vehicle", "ANPR_VEHICLE_MODEL_PATH", "anpr/weights/vehicle_yolov8n.pt")
         self._load_yolo("anpr_plate", "ANPR_PLATE_MODEL_PATH", "anpr/weights/plate_best.pt")
-        self.status["weapon"] = {"status": "unavailable", "reason": "Weapon model weights are not present in the repository."}
+        self._load_yolo("weapon", "WEAPON_MODEL_PATH", "weapon detection/weights/best.pt")
         self.status["geofencing"] = {
             "status": "ready",
             "method": "OpenCV HOG person detection + existing ANPR vehicle detection + polygon/time rules",
