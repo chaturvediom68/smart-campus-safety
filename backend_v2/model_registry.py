@@ -40,6 +40,7 @@ class ModelRegistry:
         self.status.clear()
         self._load_yolo("helmet", "HELMET_MODEL_PATH", "MODEL/weights/helmet_best.pt")
         self._load_yolo("triple_riding", "TRIPLE_RIDING_MODEL_PATH", "MODEL/weights/tripleriding_best.pt")
+        self._load_yolo("seatbelt", "SEATBELT_MODEL_PATH", "MODEL/seatbelt_best.pt")
         self._load_yolo("anpr_vehicle", "ANPR_VEHICLE_MODEL_PATH", "anpr/weights/vehicle_yolov8n.pt")
         self._load_yolo("anpr_plate", "ANPR_PLATE_MODEL_PATH", "anpr/weights/plate_best.pt")
         self._load_yolo("weapon", "WEAPON_MODEL_PATH", "weapon detection/weights/best.pt")
