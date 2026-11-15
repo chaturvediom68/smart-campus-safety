@@ -1,9 +1,8 @@
-"""One frame enters here; available models and the rule-based geofence contribute events."""
+"""One frame enters here; all available models and geofence rules contribute events."""
 import importlib.util
 import json
 import os
 import time
-from pathlib import Path
 
 import cv2
 
@@ -18,7 +17,7 @@ _anpr_import_attempted = False
 
 
 def _emit(module: str, camera: str, event_type: str, severity: str, details: dict, plate: str = ""):
-    key = f"{camera}:{module}:{event_type}:{plate}"
+    key = f"{camera}:{module}:{event_type}:{plate}:{details.get('label', '')}"
     now = time.time()
     if now - _last_seen.get(key, 0) < COOLDOWN:
         return None
@@ -56,6 +55,13 @@ def process_frame(frame, camera: str = "Camera 1"):
         raise ValueError("Could not decode the uploaded image/frame.")
 
     generated = []
+
+    # Weapon detection: every detected weapon class becomes a high-severity event.
+    for weapon in registry.predict("weapon", frame):
+        event = _emit("Weapon Detection", camera, "weapon_detected", "high", weapon)
+        if event:
+            generated.append(event)
+
     for label in registry.predict("helmet", frame):
         name = label["label"]
         if "no_helmet" in name or "without_helmet" in name or "nohelmet" in name:
@@ -90,7 +96,7 @@ def process_frame(frame, camera: str = "Camera 1"):
         "events_created": generated,
         "geofencing": geofence_result,
         "models": registry.status,
-        "note": "Geofencing uses OpenCV HOG for people, the existing ANPR detector for vehicles, and a configurable polygon/time rule. No separate geofencing weights are required.",
+        "note": "Weapon, helmet, triple-riding, vehicle and plate models run through the shared YOLO registry. Geofencing uses OpenCV HOG person detection, the ANPR vehicle detector and polygon/time rules.",
     }
 
 
