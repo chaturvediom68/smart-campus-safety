@@ -7,12 +7,13 @@ Original file is located at
     https://colab.research.google.com/drive/1WbnF1Wl6zMxEU9wQsIniBfhmR28lirOW
 """
 
+import os
 from send_alert import send_alert
 
 !pip install roboflow
 
 from roboflow import Roboflow
-rf = Roboflow(api_key="sbFAoXex0bGKGAxjVW7s")
+rf = Roboflow(api_key="os.getenv("ROBOFLOW_API_KEY", "")")
 project = rf.workspace("innovatech").project("motorcycle-helmet-q0wmd")
 version = project.version(1)
 dataset = version.download("yolov8")
@@ -20,7 +21,7 @@ dataset = version.download("yolov8")
 !pip install roboflow
 
 from roboflow import Roboflow
-rf = Roboflow(api_key="sbFAoXex0bGKGAxjVW7s")
+rf = Roboflow(api_key="os.getenv("ROBOFLOW_API_KEY", "")")
 project = rf.workspace("triple-ride-rsysj").project("triple-riding-detection-pniom")
 version = project.version(1)
 dataset = version.download("yolov8")
